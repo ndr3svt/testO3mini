@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Bouncing Ball in a Spinning Hexagon</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #222;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #111;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" width="600" height="600"></canvas>
+  <script>
+    // Get the canvas and context
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const center = { x: canvas.width / 2, y: canvas.height / 2 };
+
+    // Parameters for the hexagon
+    const hexagonRadius = 200;
+    let hexagonRotation = 0;
+    const hexagonAngularVelocity = 0.02; // angular velocity in radians per frame
+
+    // Define the ball with position, radius, and velocity
+    class Ball {
+      constructor(x, y, radius) {
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        // Start with an initial velocity (feel free to adjust or randomize)
+        this.vx = 2;
+        this.vy = -2;
+      }
+      
+      update() {
+        // Apply gravity (adjust the value to control gravity strength)
+        this.vy += 0.2;
+        // Apply air friction
+        this.vx *= 0.99;
+        this.vy *= 0.99;
+        // Update position
+        this.x += this.vx;
+        this.y += this.vy;
+      }
+    }
+    
+    let ball = new Ball(center.x, center.y, 10);
+    
+    // Function to compute the vertices of a regular hexagon with rotation
+    function getHexagonVertices(cx, cy, r, rotation) {
+      const vertices = [];
+      for (let i = 0; i < 6; i++) {
+        let angle = rotation + i * (Math.PI * 2 / 6);
+        vertices.push({
+          x: cx + r * Math.cos(angle),
+          y: cy + r * Math.sin(angle)
+        });
+      }
+      return vertices;
+    }
+    
+    // Handle collision between the ball and each hexagon wall.
+    // Here we check each edge to see if the ball is overlapping.
+    // When a collision is detected, we compute the collision normal,
+    // account for the wall's velocity (due to hexagon rotation), and reflect
+    // the ball's velocity accordingly.
+    function handleCollisions() {
+      const vertices = getHexagonVertices(center.x, center.y, hexagonRadius, hexagonRotation);
+      
+      // Loop through each edge of the hexagon
+      for (let i = 0; i < 6; i++) {
+        const A = vertices[i];
+        const B = vertices[(i + 1) % 6];
+        
+        // Compute vector AB and from A to ball center (AP)
+        const AB = { x: B.x - A.x, y: B.y - A.y };
+        const AP = { x: ball.x - A.x, y: ball.y - A.y };
+        
+        // Find the projection scalar t of AP onto AB so we can find the closest point on the segment
+        let ab2 = AB.x * AB.x + AB.y * AB.y;
+        let t = (AP.x * AB.x + AP.y * AB.y) / ab2;
+        t = Math.max(0, Math.min(1, t));
+        
+        // The closest point on the edge to the ball center
+        const closest = { x: A.x + AB.x * t, y: A.y + AB.y * t };
+        
+        // Compute distance from ball center to the closest point
+        const dist = Math.hypot(ball.x - closest.x, ball.y - closest.y);
+        
+        if (dist < ball.radius) {
+          // Collision detected
+          const overlap = ball.radius - dist;
+          
+          // Normal vector pointing from the wall (closest point) toward the ball center
+          let normal = { x: (ball.x - closest.x) / dist, y: (ball.y - closest.y) / dist };
+          
+          // Compute the velocity of the wall (edge) at the collision point due to hexagon rotation.
+          // For a rigid body rotating about its center:
+          // linear velocity = angular velocity x (position vector relative to center),
+          // which in 2D is given by: v = omega * (-dy, dx)
+          const rx = closest.x - center.x;
+          const ry = closest.y - center.y;
+          const wallVelocity = {
+            x: -hexagonAngularVelocity * ry,
+            y: hexagonAngularVelocity * rx
+          };
+          
+          // Calculate the ball's relative velocity with respect to the moving wall
+          const relativeVelocity = {
+            x: ball.vx - wallVelocity.x,
+            y: ball.vy - wallVelocity.y
+          };
+          
+          // Dot product of the relative velocity with the collision normal
+          const dot = relativeVelocity.x * normal.x + relativeVelocity.y * normal.y;
+          
+          // Only resolve if the ball is moving toward the wall (dot is negative)
+          if (dot < 0) {
+            // Reflect the relative velocity against the wall’s normal
+            const reflRelVelocity = {
+              x: relativeVelocity.x - 2 * dot * normal.x,
+              y: relativeVelocity.y - 2 * dot * normal.y
+            };
+            // Update the ball's velocity by adding back the wall's velocity
+            ball.vx = reflRelVelocity.x + wallVelocity.x;
+            ball.vy = reflRelVelocity.y + wallVelocity.y;
+          
+            // Reposition the ball so it is no longer overlapping with the wall
+            ball.x += normal.x * overlap;
+            ball.y += normal.y * overlap;
+          }
+        }
+      }
+    }
+    
+    // Main animation loop
+    function loop() {
+      // Clear the canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Update simulation: ball physics and wall rotation
+      ball.update();
+      handleCollisions();
+      hexagonRotation += hexagonAngularVelocity;
+      
+      // Draw the spinning hexagon
+      const vertices = getHexagonVertices(center.x, center.y, hexagonRadius, hexagonRotation);
+      ctx.beginPath();
+      ctx.moveTo(vertices[0].x, vertices[0].y);
+      for (let i = 1; i < 6; i++) {
+        ctx.lineTo(vertices[i].x, vertices[i].y);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = '#0f0';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      
+      // Draw the ball
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      ctx.fillStyle = '#f00';
+      ctx.fill();
+      
+      // Call the next frame
+      requestAnimationFrame(loop);
+    }
+    
+    // Start the simulation loop
+    loop();
+  </script>
+</body>
+</html>
