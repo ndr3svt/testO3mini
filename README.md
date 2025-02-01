@@ -31,3 +31,7 @@ Debugging was done with o3mini when possible. Due to impossibility of sharing im
 2. Success. First Attempt. Several balls added.
 
 3. Fail. Several balls seem to build a revolting clump that brings itself outside of the boundaries of polygon
+
+4.  Fails to solve the issue so I changed model to be able to send it an image (o3 mini to claude)
+
+5. Success. First Attempt. Smooth simulation.
