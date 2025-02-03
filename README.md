@@ -35,3 +35,18 @@ Debugging was done with o3mini when possible. Due to impossibility of sharing im
 4.  Fails to solve the issue so I changed model to be able to send it an image (o3 mini to claude)
 
 5. Success. First Attempt. Smooth simulation.
+
+
+
+## How to run this
+
+- Install http-server 
+- for single ball example run
+```bash
+ http-server examples/rotatingPolygonSingleBall
+```
+
+- for mutliple ball example run 
+```bash
+ http-server examples/rotatingPolygonMultipleBalls 
+ ```
