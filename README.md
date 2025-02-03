@@ -1,52 +1,100 @@
-# Testing o3 mini with coding tasks
+# Rotating Polygon Physics Animations
 
-In this repository you'll find some test I ran on o3 mini, promped via Claude - Composer. o3 mini was able too to handle prompts and file and code generation.
+A collection of interactive physics-based animations featuring objects bouncing inside a rotating hexagon. The project includes multiple variations:
+- Single bouncing ball
+- Multiple bouncing balls
+- Animated floating letters
 
-Prompts are organised in steps as given. Results are noted under results
+## AI Model Testing Documentation
 
-Debugging was done with o3mini when possible. Due to impossibility of sharing images with o3 mini, I used claude-3.5 sonnet for some steps that required image recognition
+This project was developed to test the capabilities of different AI models (Claude-3.5 Sonnet and O3 Mini) in handling complex physics-based animations and debugging tasks.
 
-## Prompts given
+### Prompts and Results
 
+1. **Initial Physics Implementation**
+   - Prompt: "Write a JS program that shows a ball bouncing inside a spinning hexagon. The ball should be affected by gravity and friction, and it must bounce off the rotating walls realistically"
+   - Result: Success on first attempt. Polygon drawn, rotation smooth, one bouncing ball added with natural physics.
 
-1. write a js program that shows a ball bouncing inside a spinning hexagon. The ball should be affected by gravity and friction, and it must bounce off the rotating walls realistically
+2. **Multiple Object Physics**
+   - Prompt: "@index.html add another 20 balls"
+   - Result: Success. First Attempt. Several balls added.
 
-2. @index.html add another 20 balls
+3. **Object Interaction**
+   - Prompt: "Now make it so that the balls should also collide against each other and affect each other"
+   - Result: Fail. Several balls seem to build a revolting clump that brings itself outside of the boundaries of polygon
+   - Note: Balls got stuck within themselves and pulled each other out of the boundaries
 
-3. now make it so that the balls should also collide against each other and affect each other
+4. **Boundary Constraints**
+   - Prompt: "Add limits so balls cannot escape the boundaries of the polygon"
+   - Result: Partial success. Balls confined but still exhibited clustering issues
+   - Note: Required switching from O3 Mini to Claude for image recognition capabilities
 
-*NOTE* here the balls get stuck within themselves and pull each other out of the boundaries
+5. **Physics Refinement**
+   - Prompt: "Fix balls getting stuck in energetic clusters, make them bounce naturally"
+   - Result: Success. First Attempt. Smooth simulation achieved.
 
-4. @index.html looks good, now add some limits so balls cannot scape the boundaries of the polygon, as during the first frames all balls get cluttered and push each other drastically out of the boundaries and collapse to the infinite bottom , only a few manage to stay within the boundaries and behave normally
+## Requirements
 
-*NOTE* this doesn't fully correct the issue, although balls are confined to the boundaries of the polygon
+- Node.js (v12.0.0 or higher)
+- npm (Node Package Manager)
 
-5. seems like the balls get stuck with each other just revolting energetically in a cluster, not being able to scape the clump , fix that so balls bounce naturally when colliding with each other and the boundaries of the polygon, also without scaping the polygon @index.html 
+## Installation
 
+1. First, install Node.js and npm from [https://nodejs.org/](https://nodejs.org/)
 
-## Results
-
-1. Success on the first attempt. Polygon drawn, rotation smooth, one bouncing ball added with natural physics.
-
-2. Success. First Attempt. Several balls added.
-
-3. Fail. Several balls seem to build a revolting clump that brings itself outside of the boundaries of polygon
-
-4.  Fails to solve the issue so I changed model to be able to send it an image (o3 mini to claude)
-
-5. Success. First Attempt. Smooth simulation.
-
-
-
-## How to run this
-
-- Install http-server 
-- for single ball example run
+2. Install http-server globally using npm:
 ```bash
- http-server examples/rotatingPolygonSingleBall
+npm install -g http-server
 ```
 
-- for mutliple ball example run 
+## Running the Examples
+
+1. Open a terminal/command prompt
+2. Navigate to the project directory:
 ```bash
- http-server examples/rotatingPolygonMultipleBalls 
- ```
+cd path/to/snakeBuilder
+```
+
+3. Start the http-server:
+```bash
+http-server
+```
+
+4. Open your web browser and visit:
+- http://localhost:8080/examples/rotatingPolygonSingleBall/
+- http://localhost:8080/examples/rotatingPolygonMultipleBalls/
+- http://localhost:8080/examples/rotatingPolygonLetters/
+
+By default, http-server will run on port 8080. If that port is already in use, it will automatically choose the next available port.
+
+## Troubleshooting
+
+If you get a permission error when installing http-server globally on Unix-based systems (Linux/MacOS), try:
+```bash
+sudo npm install -g http-server
+```
+
+If you prefer not to install http-server globally, you can add it as a project dependency:
+1. Initialize a package.json (if you haven't already):
+```bash
+npm init -y
+```
+
+2. Install http-server as a dev dependency:
+```bash
+npm install --save-dev http-server
+```
+
+3. Add a script to package.json:
+```json
+{
+  "scripts": {
+    "start": "http-server"
+  }
+}
+```
+
+4. Then run:
+```bash
+npm start
+```

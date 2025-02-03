@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Bouncing Ball in a Spinning Hexagon</title>
+  <title>Floating Letters in a Spinning Hexagon</title>
   <style>
     body {
       margin: 0;
@@ -27,16 +27,19 @@
     // Parameters for the hexagon
     const hexagonRadius = 300;
     let hexagonRotation = 0;
-    const hexagonAngularVelocity = 0.02; // angular velocity in radians per frame
+    const hexagonAngularVelocity = 0.02;
 
-    // Define the ball with position, radius, and velocity
-    class Ball {
-      constructor(x, y, radius) {
+    // Define the letter object with position and velocity
+    class Letter {
+      constructor(x, y, char) {
         this.x = x;
         this.y = y;
-        this.radius = radius;
+        this.char = char;
         this.vx = 0;
         this.vy = 0;
+        this.radius = 15; // Collision radius
+        this.rotation = Math.random() * Math.PI * 2; // Random initial rotation
+        this.rotationSpeed = (Math.random() - 0.5) * 0.1; // Random rotation speed
       }
       
       update() {
@@ -52,24 +55,47 @@
           this.vx = (this.vx / currentSpeed) * maxSpeed;
           this.vy = (this.vy / currentSpeed) * maxSpeed;
         }
-        // Update position
+        // Update position and rotation
         this.x += this.vx;
         this.y += this.vy;
+        this.rotation += this.rotationSpeed;
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        ctx.font = "bold 48px Helvetica";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.char, 0, 0);
+        ctx.restore();
       }
     }
     
-    let balls = [];
-    const totalBalls = 21;
-    const spreadRadius = hexagonRadius * 0.5;
-    for (let i = 0; i < totalBalls; i++) {
-      const angle = (i / totalBalls) * Math.PI * 2;
-      const r = spreadRadius * Math.sqrt(Math.random());
-      const x = center.x + r * Math.cos(angle);
-      const y = center.y + r * Math.sin(angle);
-      let b = new Ball(x, y, 10);
-      b.vx = (Math.random() - 0.5) * 2;
-      b.vy = (Math.random() - 0.5) * 2;
-      balls.push(b);
+    // Create letters from "SOOFT STUDIO"
+    const text = "Sooft Studio";
+    let letters = [];
+    const totalLetters = text.length;
+    
+    // Calculate total width of text to center it
+    ctx.font = "bold 48px Helvetica";
+    const totalWidth = ctx.measureText(text).width;
+    const letterSpacing = 45; // Space between letters
+    const startX = center.x - (totalWidth / 2)-75;
+    const startY = center.y;
+    
+    for (let i = 0; i < totalLetters; i++) {
+      const x = startX + (i * letterSpacing);
+      const y = startY;
+      let letter = new Letter(x, y, text[i]);
+      // Start with zero velocity
+      letter.vx = 0;
+      letter.vy = 0;
+      // Start with zero rotation
+      letter.rotation = 0;
+      letters.push(letter);
     }
     
     // Function to compute the vertices of a regular hexagon with rotation
@@ -85,42 +111,28 @@
       return vertices;
     }
     
-    // Handle collision between the ball and each hexagon wall.
-    // Here we check each edge to see if the ball is overlapping.
-    // When a collision is detected, we compute the collision normal,
-    // account for the wall's velocity (due to hexagon rotation), and reflect
-    // the ball's velocity accordingly.
-    function handleCollisions(ball) {
+    // Handle collision between the letter and each hexagon wall
+    function handleCollisions(letter) {
       const vertices = getHexagonVertices(center.x, center.y, hexagonRadius, hexagonRotation);
       
-      // Loop through each edge of the hexagon
       for (let i = 0; i < 6; i++) {
         const A = vertices[i];
         const B = vertices[(i + 1) % 6];
         
-        // Compute vector AB and from A to ball center (AP)
         const AB = { x: B.x - A.x, y: B.y - A.y };
-        const AP = { x: ball.x - A.x, y: ball.y - A.y };
+        const AP = { x: letter.x - A.x, y: letter.y - A.y };
         
-        // Find the projection scalar t of AP onto AB so we can find the closest point on the segment
         let ab2 = AB.x * AB.x + AB.y * AB.y;
         let t = (AP.x * AB.x + AP.y * AB.y) / ab2;
         t = Math.max(0, Math.min(1, t));
         
-        // The closest point on the edge to the ball center
         const closest = { x: A.x + AB.x * t, y: A.y + AB.y * t };
+        const dist = Math.hypot(letter.x - closest.x, letter.y - closest.y);
         
-        // Compute distance from ball center to the closest point
-        const dist = Math.hypot(ball.x - closest.x, ball.y - closest.y);
-        
-        if (dist < ball.radius) {
-          // Collision detected
-          const overlap = ball.radius - dist;
+        if (dist < letter.radius) {
+          const overlap = letter.radius - dist;
+          let normal = { x: (letter.x - closest.x) / dist, y: (letter.y - closest.y) / dist };
           
-          // Normal vector pointing from the wall (closest point) toward the ball center
-          let normal = { x: (ball.x - closest.x) / dist, y: (ball.y - closest.y) / dist };
-          
-          // Compute the velocity of the wall (edge) at the collision point due to hexagon rotation.
           const rx = closest.x - center.x;
           const ry = closest.y - center.y;
           const wallVelocity = {
@@ -128,30 +140,24 @@
             y: hexagonAngularVelocity * rx
           };
           
-          // Calculate the ball's relative velocity with respect to the moving wall
           const relativeVelocity = {
-            x: ball.vx - wallVelocity.x,
-            y: ball.vy - wallVelocity.y
+            x: letter.vx - wallVelocity.x,
+            y: letter.vy - wallVelocity.y
           };
           
-          // Dot product of the relative velocity with the collision normal
           const dot = relativeVelocity.x * normal.x + relativeVelocity.y * normal.y;
           
-          // Only resolve if the ball is moving toward the wall (dot is negative)
           if (dot < 0) {
-            const restitution = 0.8; // Energy loss in wall collisions
-            // Reflect the relative velocity against the wall's normal
+            const restitution = 0.8;
             const reflRelVelocity = {
               x: relativeVelocity.x - (1 + restitution) * dot * normal.x,
               y: relativeVelocity.y - (1 + restitution) * dot * normal.y
             };
-            // Update the ball's velocity by adding back the wall's velocity
-            ball.vx = reflRelVelocity.x + wallVelocity.x;
-            ball.vy = reflRelVelocity.y + wallVelocity.y;
-          
-            // Reposition the ball with extra separation
-            ball.x += normal.x * (overlap + 0.001);
-            ball.y += normal.y * (overlap + 0.001);
+            letter.vx = reflRelVelocity.x + wallVelocity.x;
+            letter.vy = reflRelVelocity.y + wallVelocity.y;
+            letter.x += normal.x * (overlap + 0.001);
+            letter.y += normal.y * (overlap + 0.001);
+            letter.rotationSpeed += (Math.random() - 0.5) * 0.02; // Add some random rotation on collision
           }
         }
       }
@@ -159,56 +165,53 @@
     
     // Main animation loop
     function loop() {
-      // Clear the canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-      // Update simulation: ball physics and wall rotation for each ball
-      for (let b of balls) {
-        b.update();
-        handleCollisions(b);
+      // Update simulation
+      for (let letter of letters) {
+        letter.update();
+        handleCollisions(letter);
       }
       
-      // Handle collisions among balls
-      for (let i = 0; i < balls.length; i++) {
-        for (let j = i + 1; j < balls.length; j++) {
-          const A = balls[i];
-          const B = balls[j];
+      // Handle collisions among letters
+      for (let i = 0; i < letters.length; i++) {
+        for (let j = i + 1; j < letters.length; j++) {
+          const A = letters[i];
+          const B = letters[j];
           const dx = B.x - A.x;
           const dy = B.y - A.y;
           let dist = Math.hypot(dx, dy);
           const minDist = A.radius + B.radius;
           
           if (dist < minDist) {
-            // Normalize the collision normal
             const nx = dx / dist;
             const ny = dy / dist;
             
-            // Calculate relative velocity
             const relVX = B.vx - A.vx;
             const relVY = B.vy - A.vy;
             const relativeVelocity = relVX * nx + relVY * ny;
             
-            // Do not resolve if objects are moving apart
             if (relativeVelocity < 0) {
-              // Collision impulse
-              const restitution = 0.8; // Energy loss in collision
+              const restitution = 0.8;
               const j = -(1 + restitution) * relativeVelocity;
               const impulseX = j * nx;
               const impulseY = j * ny;
               
-              // Separate balls
               const overlap = minDist - dist;
-              const separation = 0.5 * overlap + 0.001; // Small extra separation to prevent sticking
+              const separation = 0.5 * overlap + 0.001;
               A.x -= nx * separation;
               A.y -= ny * separation;
               B.x += nx * separation;
               B.y += ny * separation;
               
-              // Update velocities
               A.vx -= impulseX * 0.5;
               A.vy -= impulseY * 0.5;
               B.vx += impulseX * 0.5;
               B.vy += impulseY * 0.5;
+              
+              // Add some random rotation on collision
+              A.rotationSpeed += (Math.random() - 0.5) * 0.02;
+              B.rotationSpeed += (Math.random() - 0.5) * 0.02;
             }
           }
         }
@@ -216,9 +219,9 @@
       
       hexagonRotation += hexagonAngularVelocity;
       
-      // Enforce containment: ensure balls remain within the hexagon boundaries
+      // Enforce containment
       const verticesInside = getHexagonVertices(center.x, center.y, hexagonRadius, hexagonRotation);
-      for (let b of balls) {
+      for (let letter of letters) {
         for (let i = 0; i < verticesInside.length; i++) {
           const A = verticesInside[i];
           const B = verticesInside[(i + 1) % verticesInside.length];
@@ -233,16 +236,17 @@
           let norm = Math.hypot(inwardNormal.x, inwardNormal.y);
           inwardNormal.x /= norm;
           inwardNormal.y /= norm;
-          let distance = (b.x - A.x) * inwardNormal.x + (b.y - A.y) * inwardNormal.y;
-          if (distance < b.radius) {
-            let correction = b.radius - distance;
-            b.x += inwardNormal.x * correction;
-            b.y += inwardNormal.y * correction;
+          let distance = (letter.x - A.x) * inwardNormal.x + (letter.y - A.y) * inwardNormal.y;
+          if (distance < letter.radius) {
+            let correction = letter.radius - distance;
+            letter.x += inwardNormal.x * correction;
+            letter.y += inwardNormal.y * correction;
 
-            let vDot = b.vx * inwardNormal.x + b.vy * inwardNormal.y;
+            let vDot = letter.vx * inwardNormal.x + letter.vy * inwardNormal.y;
             if (vDot < 0) {
-              b.vx -= 2 * vDot * inwardNormal.x;
-              b.vy -= 2 * vDot * inwardNormal.y;
+              letter.vx -= 2 * vDot * inwardNormal.x;
+              letter.vy -= 2 * vDot * inwardNormal.y;
+              letter.rotationSpeed += (Math.random() - 0.5) * 0.02;
             }
           }
         }
@@ -261,15 +265,11 @@
       ctx.lineWidth = 1;
       ctx.stroke();
       
-      // Draw all balls
-      for (let b of balls) {
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
+      // Draw all letters
+      for (let letter of letters) {
+        letter.draw(ctx);
       }
       
-      // Call the next frame
       requestAnimationFrame(loop);
     }
     
@@ -277,4 +277,4 @@
     loop();
   </script>
 </body>
-</html>
+</html> 
